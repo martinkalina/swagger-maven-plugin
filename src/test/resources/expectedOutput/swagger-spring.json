@@ -1421,8 +1421,31 @@
           }
         }
       }
-    }
-  },
+    },
+      "/userWithDefVal" : {
+          "post" : {
+              "operationId" : "post",
+              "parameters" : [ {
+                  "in" : "body",
+                  "name" : "body",
+                  "required" : false,
+                  "schema" : {
+                      "$ref" : "#/definitions/User"
+                  }
+              }, {
+                  "name" : "param",
+                  "in" : "query",
+                  "required" : false,
+                  "type" : "string"
+              } ],
+              "responses" : {
+                  "default" : {
+                      "description" : "successful operation"
+                  }
+              }
+          }
+      }
+    },
   "securityDefinitions" : {
     "api_key" : {
       "type" : "apiKey",

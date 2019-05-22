@@ -23,13 +23,11 @@ import io.swagger.models.properties.Property;
 import io.swagger.models.properties.RefProperty;
 import org.apache.maven.plugin.logging.Log;
 import org.codehaus.plexus.util.StringUtils;
-import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -45,15 +43,17 @@ import static org.springframework.core.annotation.AnnotatedElementUtils.findMerg
 import static org.springframework.core.annotation.AnnotationUtils.findAnnotation;
 
 public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerReader {
-    private static final ResponseContainerConverter RESPONSE_CONTAINER_CONVERTER = new ResponseContainerConverter();
+    static final ResponseContainerConverter RESPONSE_CONTAINER_CONVERTER = new ResponseContainerConverter();
 
-    private final SpringExceptionHandlerReader exceptionHandlerReader;
+    final SpringExceptionHandlerReader exceptionHandlerReader;
+    private final KotlinParametersProcessor parametersProcessor;
 
     private String resourcePath;
 
     public SpringMvcApiReader(Swagger swagger, Log log) {
         super(swagger, log);
         exceptionHandlerReader = new SpringExceptionHandlerReader(log);
+        parametersProcessor = new KotlinParametersProcessor(this);
     }
 
     @Override
@@ -307,37 +307,12 @@ public class SpringMvcApiReader extends AbstractReader implements ClassSwaggerRe
         }
 
         // process parameters
-        Class[] parameterTypes = method.getParameterTypes();
-        Type[] genericParameterTypes = method.getGenericParameterTypes();
-        Annotation[][] paramAnnotations = method.getParameterAnnotations();
-        DefaultParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
-        String[] parameterNames = parameterNameDiscoverer.getParameterNames(method);
-        // paramTypes = method.getParameterTypes
-        // genericParamTypes = method.getGenericParameterTypes
-        for (int i = 0; i < parameterTypes.length; i++) {
-            Type type = genericParameterTypes[i];
-            List<Annotation> annotations = Arrays.asList(paramAnnotations[i]);
-            List<Parameter> parameters = getParameters(type, annotations);
-
-            for (Parameter parameter : parameters) {
-                if(parameter.getName().isEmpty()) {
-                    parameter.setName(parameterNames[i]);
-                }
-                operation.parameter(parameter);
-            }
-        }
-
-        if (operation.getResponses() == null) {
-            operation.defaultResponse(new Response().description("successful operation"));
-        }
-
-        // Process @ApiImplicitParams
-        this.readImplicitParameters(method, operation);
-
-        processOperationDecorator(operation, method);
+        parametersProcessor.processParameters(method, operation);
 
         return operation;
     }
+
+
 
     private Map<String, List<Method>> collectApisByRequestMapping(List<Method> methods) {
         Map<String, List<Method>> apiMethodMap = new HashMap<String, List<Method>>();
